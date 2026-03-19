@@ -16,8 +16,6 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      # Install Qt6 — DO NOT specify 'qtbase' in modules,
-      # it is included by default. modules is for extras only.
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
@@ -27,16 +25,12 @@ jobs:
           arch: 'win64_msvc2019_64'
           cache: true
 
-      - name: Configure CMake
+      - name: Configure & Build
         shell: cmd
         run: |
           cmake -B build ^
             -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_PREFIX_PATH="%Qt6_DIR%"
-
-      - name: Build
-        shell: cmd
-        run: |
           cmake --build build --config Release
 
       - name: Verify executable
@@ -44,7 +38,7 @@ jobs:
         run: |
           if not exist "build\Release\TheSystem.exe" (
             echo ERROR: TheSystem.exe not found
-            dir build\Release\
+            dir build\
             exit /b 1
           )
           echo Found: build\Release\TheSystem.exe
@@ -59,21 +53,31 @@ jobs:
             --no-translations ^
             --no-system-d3d-compiler ^
             deploy\TheSystem.exe
-          echo Deploy folder contents:
-          dir deploy\
 
       - name: Install NSIS
-        run: choco install nsis -y
+        shell: powershell
+        run: |
+          choco install nsis -y
+          # Refresh PATH so makensis is available in this session
+          $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
+          echo "NSIS installed. Verifying..."
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /VERSION
 
       - name: Create installer with NSIS
-        shell: cmd
+        shell: powershell
         run: |
-          makensis installer.nsi
-          if not exist "TheSystem-Setup.exe" (
-            echo ERROR: Installer was not created
-            exit /b 1
-          )
-          echo Installer created successfully
+          $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $makensis)) {
+            Write-Error "makensis.exe not found at expected path"
+            exit 1
+          }
+          & $makensis installer.nsi
+          if (-not (Test-Path "TheSystem-Setup.exe")) {
+            Write-Error "Installer was not created"
+            exit 1
+          }
+          Write-Host "Installer created successfully"
+          Get-Item "TheSystem-Setup.exe" | Select-Object Name, Length
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
