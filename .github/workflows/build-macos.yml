@@ -1,37 +1,86 @@
 name: Build macOS DMG
 
 on:
+  workflow_dispatch:
   push:
-    tags: ['v*']        # triggers on git tag e.g. "v1.0"
-  workflow_dispatch:    # also lets you trigger manually from GitHub UI
+    tags: ['v*']
 
 jobs:
   build:
     runs-on: macos-latest
+
     steps:
-      - uses: actions/checkout@v4
+      # ── 1. Checkout ────────────────────────────────────────────
+      - name: Checkout source
+        uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-      - name: Install Qt6
-        run: brew install qt6 cmake
+      # ── 2. Install Qt6 and CMake via Homebrew ──────────────────
+      - name: Install dependencies
+        run: |
+          brew install cmake qt6
+          echo "QT_PREFIX=$(brew --prefix qt6)" >> $GITHUB_ENV
 
-      - name: Build Release
+      # ── 3. Configure & Build (native arch only — arm64 on M runners) ──
+      - name: Configure CMake
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH=$(brew --prefix qt6) \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+            -DCMAKE_PREFIX_PATH="${QT_PREFIX}"
+
+      - name: Build
+        run: |
           cmake --build build -j$(sysctl -n hw.logicalcpu)
 
-      - name: Bundle & create DMG
+      # ── 4. Verify the .app exists ──────────────────────────────
+      - name: Verify app bundle
         run: |
-          $(brew --prefix qt6)/bin/macdeployqt build/TheSystem.app -verbose=1
-          codesign --force --deep --sign - build/TheSystem.app
-          hdiutil create -volname "The System" \
-            -srcfolder build/TheSystem.app \
-            -ov -format UDZO TheSystem.dmg
+          if [ ! -d "build/TheSystem.app" ]; then
+            echo "ERROR: TheSystem.app not found in build/"
+            ls -la build/
+            exit 1
+          fi
+          echo "Found: build/TheSystem.app"
 
-      - name: Upload DMG as release asset
+      # ── 5. Bundle Qt frameworks ────────────────────────────────
+      - name: Run macdeployqt
+        run: |
+          "${QT_PREFIX}/bin/macdeployqt" build/TheSystem.app -verbose=2
+
+      # ── 6. Ad-hoc code sign (no Apple Developer account needed) ─
+      - name: Code sign
+        run: |
+          codesign --force --deep --sign - build/TheSystem.app
+          echo "Code signing done"
+
+      # ── 7. Create DMG with drag-to-Applications layout ─────────
+      - name: Create DMG
+        run: |
+          # Create staging folder
+          mkdir -p dmg_staging
+          cp -R build/TheSystem.app dmg_staging/
+
+          # Symlink to /Applications so user can drag-and-drop
+          ln -s /Applications dmg_staging/Applications
+
+          # Build compressed DMG
+          hdiutil create \
+            -volname "The System" \
+            -srcfolder dmg_staging \
+            -ov \
+            -format UDZO \
+            -imagekey zlib-level=9 \
+            TheSystem.dmg
+
+          # Verify it was created
+          ls -lh TheSystem.dmg
+          echo "DMG created successfully"
+
+      # ── 8. Upload DMG as artifact ──────────────────────────────
+      - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
           name: TheSystem-macOS
           path: TheSystem.dmg
+          retention-days: 30
