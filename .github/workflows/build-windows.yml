@@ -13,9 +13,12 @@ jobs:
     runs-on: windows-latest
 
     steps:
+      # ── 1. Checkout ─────────────────────────────────────────────
       - name: Checkout source
         uses: actions/checkout@v4
 
+      # ── 2. Install Qt6 ──────────────────────────────────────────
+      # modules: intentionally omitted — base Qt is always included
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
@@ -25,60 +28,95 @@ jobs:
           arch: 'win64_msvc2019_64'
           cache: true
 
-      - name: Configure & Build
-        shell: cmd
+      # ── 3. Debug: print all Qt-related env vars ──────────────────
+      # This step is safe to remove after first successful run
+      - name: Show Qt environment
+        shell: powershell
         run: |
-          cmake -B build ^
-            -DCMAKE_BUILD_TYPE=Release ^
-            -DCMAKE_PREFIX_PATH="%Qt6_DIR%"
+          Write-Host "QT_ROOT_DIR  = $env:QT_ROOT_DIR"
+          Write-Host "Qt6_DIR      = $env:Qt6_DIR"
+          Write-Host "windeployqt  = $env:QT_ROOT_DIR\bin\windeployqt.exe"
+          Test-Path "$env:QT_ROOT_DIR\bin\windeployqt.exe"
+
+      # ── 4. Configure & Build ─────────────────────────────────────
+      - name: Configure CMake
+        shell: powershell
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+
+      - name: Build
+        shell: powershell
+        run: |
           cmake --build build --config Release
 
+      # ── 5. Verify the .exe was produced ─────────────────────────
       - name: Verify executable
-        shell: cmd
+        shell: powershell
         run: |
-          if not exist "build\Release\TheSystem.exe" (
-            echo ERROR: TheSystem.exe not found
-            dir build\
-            exit /b 1
-          )
-          echo Found: build\Release\TheSystem.exe
+          if (-not (Test-Path "build\Release\TheSystem.exe")) {
+            Write-Error "TheSystem.exe not found"
+            Get-ChildItem build\ -Recurse -Filter "*.exe"
+            exit 1
+          }
+          Write-Host "Found: build\Release\TheSystem.exe"
 
+      # ── 6. Bundle all required Qt DLLs ───────────────────────────
       - name: Bundle Qt DLLs with windeployqt
-        shell: cmd
+        shell: powershell
         run: |
-          mkdir deploy
-          copy build\Release\TheSystem.exe deploy\
-          "%Qt6_DIR%\bin\windeployqt.exe" ^
-            --release ^
-            --no-translations ^
-            --no-system-d3d-compiler ^
-            deploy\TheSystem.exe
+          $windeployqt = "$env:QT_ROOT_DIR\bin\windeployqt.exe"
 
+          if (-not (Test-Path $windeployqt)) {
+            Write-Error "windeployqt.exe not found at: $windeployqt"
+            Get-ChildItem "$env:QT_ROOT_DIR\bin\" -Filter "*.exe" | Select-Object Name
+            exit 1
+          }
+
+          New-Item -ItemType Directory -Force -Path deploy | Out-Null
+          Copy-Item "build\Release\TheSystem.exe" "deploy\"
+
+          & $windeployqt `
+            --release `
+            --no-translations `
+            --no-system-d3d-compiler `
+            "deploy\TheSystem.exe"
+
+          Write-Host "Deploy folder contents:"
+          Get-ChildItem deploy\ | Select-Object Name, Length
+
+      # ── 7. Install NSIS (use full absolute path, not PATH) ───────
       - name: Install NSIS
         shell: powershell
         run: |
-          choco install nsis -y
-          # Refresh PATH so makensis is available in this session
-          $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
-          echo "NSIS installed. Verifying..."
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /VERSION
+          choco install nsis -y --no-progress
+          $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
+          if (-not (Test-Path $makensis)) {
+            Write-Error "makensis.exe not found at $makensis"
+            exit 1
+          }
+          Write-Host "NSIS ready: $makensis"
+          & $makensis /VERSION
 
+      # ── 8. Build the installer ───────────────────────────────────
       - name: Create installer with NSIS
         shell: powershell
         run: |
           $makensis = "C:\Program Files (x86)\NSIS\makensis.exe"
-          if (-not (Test-Path $makensis)) {
-            Write-Error "makensis.exe not found at expected path"
-            exit 1
-          }
           & $makensis installer.nsi
-          if (-not (Test-Path "TheSystem-Setup.exe")) {
-            Write-Error "Installer was not created"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "NSIS failed with exit code $LASTEXITCODE"
             exit 1
           }
-          Write-Host "Installer created successfully"
-          Get-Item "TheSystem-Setup.exe" | Select-Object Name, Length
+          if (-not (Test-Path "TheSystem-Setup.exe")) {
+            Write-Error "TheSystem-Setup.exe was not created"
+            exit 1
+          }
+          $size = (Get-Item "TheSystem-Setup.exe").Length / 1MB
+          Write-Host ("Installer created: TheSystem-Setup.exe ({0:N1} MB)" -f $size)
 
+      # ── 9. Upload artifact ───────────────────────────────────────
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
