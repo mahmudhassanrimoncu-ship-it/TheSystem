@@ -5,24 +5,22 @@ on:
   push:
     tags: ['v*']
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-      # ── 1. Checkout ────────────────────────────────────────────
       - name: Checkout source
         uses: actions/checkout@v4
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
-      # ── 2. Install Qt6 and CMake via Homebrew ──────────────────
       - name: Install dependencies
         run: |
           brew install cmake qt6
           echo "QT_PREFIX=$(brew --prefix qt6)" >> $GITHUB_ENV
 
-      # ── 3. Configure & Build (native arch only — arm64 on M runners) ──
       - name: Configure CMake
         run: |
           cmake -B build \
@@ -30,54 +28,33 @@ jobs:
             -DCMAKE_PREFIX_PATH="${QT_PREFIX}"
 
       - name: Build
-        run: |
-          cmake --build build -j$(sysctl -n hw.logicalcpu)
+        run: cmake --build build -j$(sysctl -n hw.logicalcpu)
 
-      # ── 4. Verify the .app exists ──────────────────────────────
       - name: Verify app bundle
         run: |
           if [ ! -d "build/TheSystem.app" ]; then
-            echo "ERROR: TheSystem.app not found in build/"
-            ls -la build/
-            exit 1
+            echo "ERROR: TheSystem.app not found"; ls -la build/; exit 1
           fi
-          echo "Found: build/TheSystem.app"
 
-      # ── 5. Bundle Qt frameworks ────────────────────────────────
       - name: Run macdeployqt
-        run: |
-          "${QT_PREFIX}/bin/macdeployqt" build/TheSystem.app -verbose=2
+        run: "${QT_PREFIX}/bin/macdeployqt" build/TheSystem.app -verbose=2
 
-      # ── 6. Ad-hoc code sign (no Apple Developer account needed) ─
       - name: Code sign
-        run: |
-          codesign --force --deep --sign - build/TheSystem.app
-          echo "Code signing done"
+        run: codesign --force --deep --sign - build/TheSystem.app
 
-      # ── 7. Create DMG with drag-to-Applications layout ─────────
       - name: Create DMG
         run: |
-          # Create staging folder
           mkdir -p dmg_staging
           cp -R build/TheSystem.app dmg_staging/
-
-          # Symlink to /Applications so user can drag-and-drop
           ln -s /Applications dmg_staging/Applications
-
-          # Build compressed DMG
           hdiutil create \
             -volname "The System" \
             -srcfolder dmg_staging \
-            -ov \
-            -format UDZO \
+            -ov -format UDZO \
             -imagekey zlib-level=9 \
             TheSystem.dmg
-
-          # Verify it was created
           ls -lh TheSystem.dmg
-          echo "DMG created successfully"
 
-      # ── 8. Upload DMG as artifact ──────────────────────────────
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
