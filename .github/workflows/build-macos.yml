@@ -28,19 +28,25 @@ jobs:
             -DCMAKE_PREFIX_PATH="${QT_PREFIX}"
 
       - name: Build
-        run: cmake --build build -j$(sysctl -n hw.logicalcpu)
+        run: |
+          cmake --build build -j$(sysctl -n hw.logicalcpu)
 
       - name: Verify app bundle
         run: |
           if [ ! -d "build/TheSystem.app" ]; then
-            echo "ERROR: TheSystem.app not found"; ls -la build/; exit 1
+            echo "ERROR: TheSystem.app not found"
+            ls -la build/
+            exit 1
           fi
+          echo "Found: build/TheSystem.app"
 
       - name: Run macdeployqt
-        run: "${QT_PREFIX}/bin/macdeployqt" build/TheSystem.app -verbose=2
+        run: |
+          ${QT_PREFIX}/bin/macdeployqt build/TheSystem.app -verbose=2
 
       - name: Code sign
-        run: codesign --force --deep --sign - build/TheSystem.app
+        run: |
+          codesign --force --deep --sign - build/TheSystem.app
 
       - name: Create DMG
         run: |

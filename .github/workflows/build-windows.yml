@@ -1,17 +1,23 @@
 name: Build Windows Installer
 
 on:
-  workflow_dispatch:   # run manually from GitHub Actions tab
+  workflow_dispatch:
   push:
     tags: ['v*']
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
+      # Install Qt6 — DO NOT specify 'qtbase' in modules,
+      # it is included by default. modules is for extras only.
       - name: Install Qt6
         uses: jurplel/install-qt-action@v4
         with:
@@ -19,36 +25,59 @@ jobs:
           host: 'windows'
           target: 'desktop'
           arch: 'win64_msvc2019_64'
-          modules: 'qtbase'
+          cache: true
 
-      - name: Configure & Build
+      - name: Configure CMake
         shell: cmd
         run: |
           cmake -B build ^
             -DCMAKE_BUILD_TYPE=Release ^
-            -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+            -DCMAKE_PREFIX_PATH="%Qt6_DIR%"
+
+      - name: Build
+        shell: cmd
+        run: |
           cmake --build build --config Release
+
+      - name: Verify executable
+        shell: cmd
+        run: |
+          if not exist "build\Release\TheSystem.exe" (
+            echo ERROR: TheSystem.exe not found
+            dir build\Release\
+            exit /b 1
+          )
+          echo Found: build\Release\TheSystem.exe
 
       - name: Bundle Qt DLLs with windeployqt
         shell: cmd
         run: |
           mkdir deploy
           copy build\Release\TheSystem.exe deploy\
-          "${{ env.Qt6_DIR }}\bin\windeployqt.exe" ^
+          "%Qt6_DIR%\bin\windeployqt.exe" ^
             --release ^
             --no-translations ^
             --no-system-d3d-compiler ^
             deploy\TheSystem.exe
+          echo Deploy folder contents:
+          dir deploy\
 
       - name: Install NSIS
         run: choco install nsis -y
 
       - name: Create installer with NSIS
         shell: cmd
-        run: makensis installer.nsi
+        run: |
+          makensis installer.nsi
+          if not exist "TheSystem-Setup.exe" (
+            echo ERROR: Installer was not created
+            exit /b 1
+          )
+          echo Installer created successfully
 
-      - name: Upload installer
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: TheSystem-Windows-Setup
           path: TheSystem-Setup.exe
+          retention-days: 30
