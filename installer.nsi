@@ -55,7 +55,7 @@ Section "Install" SEC01
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEMreSTEMublisher" "reSTEM"
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \ "Publisher" "reSTEM"
   WriteRegDWORD HKLM \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "NoModify" 1
