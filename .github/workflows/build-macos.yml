@@ -33,37 +33,37 @@ jobs:
 
       - name: Verify app bundle
         run: |
-          if [ ! -d "build/TheSystem.app" ]; then
-            echo "ERROR: TheSystem.app not found"
+          if [ ! -d "build/reSTEM.app" ]; then
+            echo "ERROR: reSTEM.app not found"
             ls -la build/
             exit 1
           fi
-          echo "Found: build/TheSystem.app"
+          echo "Found: build/reSTEM.app"
 
       - name: Run macdeployqt
         run: |
-          ${QT_PREFIX}/bin/macdeployqt build/TheSystem.app -verbose=2
+          ${QT_PREFIX}/bin/macdeployqt build/reSTEM.app -verbose=2
 
       - name: Code sign
         run: |
-          codesign --force --deep --sign - build/TheSystem.app
+          codesign --force --deep --sign - build/reSTEM.app
 
       - name: Create DMG
         run: |
           mkdir -p dmg_staging
-          cp -R build/TheSystem.app dmg_staging/
+          cp -R build/reSTEM.app dmg_staging/
           ln -s /Applications dmg_staging/Applications
           hdiutil create \
             -volname "The System" \
             -srcfolder dmg_staging \
             -ov -format UDZO \
             -imagekey zlib-level=9 \
-            TheSystem.dmg
-          ls -lh TheSystem.dmg
+            reSTEM.dmg
+          ls -lh reSTEM.dmg
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TheSystem-macOS
-          path: TheSystem.dmg
+          name: reSTEM-macOS
+          path: reSTEM.dmg
           retention-days: 30

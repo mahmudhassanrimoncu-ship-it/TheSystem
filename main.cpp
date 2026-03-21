@@ -6,13 +6,13 @@
 //    sudo dnf install qt6-qtbase-devel cmake gcc-c++
 //    cmake -B build -DCMAKE_BUILD_TYPE=Release
 //    cmake --build build -j$(nproc)
-//    ./build/TheSystem
+//    ./build/reSTEM
 //
 //  Build (macOS Homebrew):
 //    brew install qt6 cmake
 //    cmake -B build -DCMAKE_PREFIX_PATH=$(brew --prefix qt6)
 //    cmake --build build
-//    open build/TheSystem.app
+//    open build/reSTEM.app
 // ============================================================
 
 #include <QApplication>
@@ -2254,7 +2254,7 @@ public:
             .arg(Cl::white_).arg(Cl::border));
         auto* hl = new QHBoxLayout(header);
         hl->setContentsMargins(24, 12, 24, 12);
-        auto* title = new QLabel("THE SYSTEM");
+        auto* title = new QLabel("reSTEM");
         title->setStyleSheet(QString(
             "font-size: 18px; font-weight: 700; letter-spacing: 4px;"
             " color: %1; border: none;").arg(Cl::navy));
@@ -5142,7 +5142,7 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
     MainWindow() {
-        setWindowTitle("THE SYSTEM");
+        setWindowTitle("reSTEM");
         setMinimumSize(800, 560);
 
         // Start at 85% of available screen, capped at 1400×900
@@ -5208,8 +5208,8 @@ int main(int argc, char* argv[])
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 
     QApplication app(argc, argv);
-    app.setApplicationName("TheSystem");
-    app.setOrganizationName("TheSystem");
+    app.setApplicationName("reSTEM");
+    app.setOrganizationName("reSTEM");
     app.setStyleSheet(buildQSS());
 
     // Font selection: prefer system sans-serif

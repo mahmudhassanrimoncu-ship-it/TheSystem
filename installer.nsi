@@ -1,18 +1,18 @@
 ; ============================================================
 ;  THE SYSTEM — Windows Installer Script
-;  Generates: TheSystem-Setup.exe
+;  Generates: reSTEM-Setup.exe
 ;  Used by: .github/workflows/build-windows.yml
 ; ============================================================
 
-!define APP_NAME      "The System"
-!define APP_EXE       "TheSystem.exe"
+!define APP_NAME      "reSTEM"
+!define APP_EXE       "reSTEM.exe"
 !define APP_VERSION   "1.0"
-!define INSTALL_DIR   "$PROGRAMFILES64\TheSystem"
+!define INSTALL_DIR   "$PROGRAMFILES64\reSTEM"
 
 Name            "${APP_NAME}"
-OutFile         "TheSystem-Setup.exe"
+OutFile         "reSTEM-Setup.exe"
 InstallDir      "${INSTALL_DIR}"
-InstallDirRegKey HKLM "Software\TheSystem" "Install_Dir"
+InstallDirRegKey HKLM "Software\reSTEM" "Install_Dir"
 RequestExecutionLevel admin
 SetCompressor    lzma
 
@@ -46,22 +46,21 @@ Section "Install" SEC01
 
   ; Register with Windows Add/Remove Programs
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "DisplayName" "${APP_NAME}"
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "UninstallString" "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
-    "Publisher" "THE SYSTEM"
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEMreSTEMublisher" "THE SYSTEM"
   WriteRegDWORD HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "NoModify" 1
   WriteRegDWORD HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem" \
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "NoRepair" 1
 SectionEnd
 
@@ -74,6 +73,6 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APP_NAME}\Uninstall.lnk"
   RMDir  "$SMPROGRAMS\${APP_NAME}"
   DeleteRegKey HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\TheSystem"
-  DeleteRegKey HKLM "Software\TheSystem"
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM"
+  DeleteRegKey HKLM "Software\reSTEM"
 SectionEnd

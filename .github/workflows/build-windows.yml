@@ -47,12 +47,12 @@ jobs:
       - name: Verify executable
         shell: powershell
         run: |
-          if (-not (Test-Path "build\Release\TheSystem.exe")) {
-            Write-Error "TheSystem.exe not found"
+          if (-not (Test-Path "build\Release\reSTEM.exe")) {
+            Write-Error "reSTEM.exe not found"
             Get-ChildItem build\ -Recurse -Filter "*.exe"
             exit 1
           }
-          Write-Host "Found: build\Release\TheSystem.exe"
+          Write-Host "Found: build\Release\reSTEM.exe"
 
       # ── 6. Bundle Qt DLLs ────────────────────────────────────────
       - name: Bundle Qt DLLs with windeployqt
@@ -64,12 +64,12 @@ jobs:
             exit 1
           }
           New-Item -ItemType Directory -Force -Path deploy | Out-Null
-          Copy-Item "build\Release\TheSystem.exe" "deploy\"
+          Copy-Item "build\Release\reSTEM.exe" "deploy\"
           & $windeployqt `
             --release `
             --no-translations `
             --no-system-d3d-compiler `
-            "deploy\TheSystem.exe"
+            "deploy\reSTEM.exe"
           Write-Host "Deploy contents:"
           Get-ChildItem deploy\ | Select-Object Name, Length
 
@@ -96,17 +96,17 @@ jobs:
             Write-Error "NSIS failed with exit code $LASTEXITCODE"
             exit 1
           }
-          if (-not (Test-Path "TheSystem-Setup.exe")) {
-            Write-Error "TheSystem-Setup.exe was not created"
+          if (-not (Test-Path "reSTEM-Setup.exe")) {
+            Write-Error "reSTEM-Setup.exe was not created"
             exit 1
           }
-          $size = (Get-Item "TheSystem-Setup.exe").Length / 1MB
-          Write-Host ("Installer: TheSystem-Setup.exe ({0:N1} MB)" -f $size)
+          $size = (Get-Item "reSTEM-Setup.exe").Length / 1MB
+          Write-Host ("Installer: reSTEM-Setup.exe ({0:N1} MB)" -f $size)
 
       # ── 9. Upload artifact ───────────────────────────────────────
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TheSystem-Windows-Setup
-          path: TheSystem-Setup.exe
+          name: reSTEM-Windows-Setup
+          path: reSTEM-Setup.exe
           retention-days: 30
