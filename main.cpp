@@ -5209,6 +5209,32 @@ int main(int argc, char* argv[])
     QApplication app(argc, argv);
     app.setApplicationName("reSTEM");
     app.setOrganizationName("reSTEM");
+
+    // Fusion style bypasses the native OS theme engine entirely.
+    // This prevents Windows dark mode from giving dialogs a dark
+    // background with black text (unreadable). Fusion uses only
+    // the explicit palette below on all platforms.
+    app.setStyle("Fusion");
+
+    // Explicit light palette — covers every role that QMessageBox
+    // and QDialog inspect. Works identically on Windows, macOS, Linux.
+    QPalette pal;
+    pal.setColor(QPalette::Window,          QColor("#F7F8FA"));
+    pal.setColor(QPalette::WindowText,      QColor("#21242C"));
+    pal.setColor(QPalette::Base,            QColor("#FFFFFF"));
+    pal.setColor(QPalette::AlternateBase,   QColor("#F2F4F8"));
+    pal.setColor(QPalette::Text,            QColor("#21242C"));
+    pal.setColor(QPalette::BrightText,      QColor("#21242C"));
+    pal.setColor(QPalette::ButtonText,      QColor("#21242C"));
+    pal.setColor(QPalette::Button,          QColor("#FFFFFF"));
+    pal.setColor(QPalette::Highlight,       QColor("#1865F2"));
+    pal.setColor(QPalette::HighlightedText, QColor("#FFFFFF"));
+    pal.setColor(QPalette::ToolTipBase,     QColor("#21242C"));
+    pal.setColor(QPalette::ToolTipText,     QColor("#FFFFFF"));
+    pal.setColor(QPalette::Link,            QColor("#1865F2"));
+    pal.setColor(QPalette::LinkVisited,     QColor("#7B439E"));
+    app.setPalette(pal);
+
     app.setStyleSheet(buildQSS());
 
     // Font selection: prefer system sans-serif
@@ -5216,6 +5242,8 @@ int main(int argc, char* argv[])
 #if defined(Q_OS_MAC)
     appFont.setFamily("SF Pro Text");
     if (!appFont.exactMatch()) appFont.setFamily("Helvetica Neue");
+#elif defined(Q_OS_WIN)
+    appFont.setFamily("Segoe UI");
 #elif defined(Q_OS_LINUX)
     appFont.setFamily("Noto Sans");
     if (!appFont.exactMatch()) appFont.setFamily("Liberation Sans");
