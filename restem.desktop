@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=reSTEM
+GenericName=Quest-based Learning Planner
+Comment=Turn your study plan into an RPG
+Exec=reSTEM
+Icon=restem
+Terminal=false
+Categories=Education;
+Keywords=study;planner;learning;quest;
+StartupNotify=true

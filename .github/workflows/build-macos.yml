@@ -21,6 +21,28 @@ jobs:
           brew install cmake qt6
           echo "QT_PREFIX=$(brew --prefix qt6)" >> $GITHUB_ENV
 
+      # Build .icns from the 1024px PNG committed in the repo.
+      # iconutil is a macOS-only tool — this is why we do it here
+      # instead of on Fedora during icon generation.
+      - name: Build .icns icon
+        run: |
+          mkdir -p icons/reSTEM.iconset
+
+          # Generate all required sizes from the 1024px source PNG
+          sips -z 16   16   icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_16x16.png
+          sips -z 32   32   icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_16x16@2x.png
+          sips -z 32   32   icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_32x32.png
+          sips -z 64   64   icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_32x32@2x.png
+          sips -z 128  128  icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_128x128.png
+          sips -z 256  256  icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_128x128@2x.png
+          sips -z 256  256  icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_256x256.png
+          sips -z 512  512  icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_256x256@2x.png
+          sips -z 512  512  icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_512x512.png
+          sips -z 1024 1024 icons/restem_mac_1024.png --out icons/reSTEM.iconset/icon_512x512@2x.png
+
+          iconutil -c icns icons/reSTEM.iconset -o icons/reSTEM.icns
+          echo "Built: icons/reSTEM.icns ($(du -sh icons/reSTEM.icns | cut -f1))"
+
       - name: Configure CMake
         run: |
           cmake -B build \
@@ -39,6 +61,8 @@ jobs:
             exit 1
           fi
           echo "Found: build/reSTEM.app"
+          echo "Icon in bundle:"
+          ls build/reSTEM.app/Contents/Resources/*.icns 2>/dev/null || echo "WARNING: no icns found in bundle"
 
       - name: Run macdeployqt
         run: |
