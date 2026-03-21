@@ -54,7 +54,7 @@ jobs:
           cp -R build/reSTEM.app dmg_staging/
           ln -s /Applications dmg_staging/Applications
           hdiutil create \
-            -volname "The System" \
+            -volname "reSTEM" \
             -srcfolder dmg_staging \
             -ov -format UDZO \
             -imagekey zlib-level=9 \

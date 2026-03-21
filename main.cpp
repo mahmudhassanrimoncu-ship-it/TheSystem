@@ -1,5 +1,5 @@
 // ============================================================
-//  THE SYSTEM — Quest-based Learning Planner
+//  reSTEM — Quest-based Learning Planner
 //  C++17 / Qt6  |  Linux + macOS
 //
 //  Build (Linux Fedora):
@@ -843,7 +843,7 @@ static const QMap<QString,QString> RANK_MSG = {
     {"C","The foundation is solid. You are someone who follows through."},
     {"B","Few reach this level. Consistency has become your identity."},
     {"A","You stand among those who finish what they start. Rare."},
-    {"S","You have mastered the system itself. This is dedication."},
+    {"S","You have mastered reSTEM itself. This is dedication."},
 };
 
 inline QVector<RankInfo> effectiveRanks(const Plan& plan) {
@@ -3283,7 +3283,7 @@ public:
         auto* abtVl  = new QVBoxLayout(abtGrp);
         // dataPath() uses QStandardPaths — always points to the current user's own directory
         QString dataNote = QString(
-            "<b>THE SYSTEM</b> — Quest-based Learning Planner  v1.0<br>"
+            "<b>reSTEM</b> — Quest-based Learning Planner  v1.0<br>"
             "C++17 / Qt6  ·  Linux + macOS<br><br>"
             "Your data is stored locally on <b>this computer</b> only:<br>"
             "<code>%1</code><br><br>"

@@ -1,5 +1,5 @@
 ; ============================================================
-;  THE SYSTEM — Windows Installer Script
+;  reSTEM — Windows Installer Script
 ;  Generates: reSTEM-Setup.exe
 ;  Used by: .github/workflows/build-windows.yml
 ; ============================================================
@@ -55,7 +55,7 @@ Section "Install" SEC01
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKLM \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEMreSTEMublisher" "THE SYSTEM"
+    "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEMreSTEMublisher" "reSTEM"
   WriteRegDWORD HKLM \
     "Software\Microsoft\Windows\CurrentVersion\Uninstall\reSTEM" \
     "NoModify" 1
