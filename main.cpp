@@ -3284,13 +3284,12 @@ public:
         // dataPath() uses QStandardPaths — always points to the current user's own directory
         QString dataNote = QString(
             "<b>reSTEM</b> — Quest-based Learning Planner  v1.0<br>"
-            "C++17 / Qt6  ·  Linux + macOS<br><br>"
+            "C++17 / Qt6  ·  Linux + macOS + Windows<br><br>"
             "Your data is stored locally on <b>this computer</b> only:<br>"
             "<code>%1</code><br><br>"
             "<span style='color:#8D9096;font-size:11px;'>"
             "This path is specific to your user account. Each person who runs this app "
             "on their own computer sees their own path and their own data. "
-            "No data is shared or uploaded anywhere."
             "</span>").arg(DataManager::dataPath());
         auto* abtTxt = new QLabel(dataNote);
         abtTxt->setStyleSheet(QString("color: %1; font-size: 12px; border: none;").arg(Cl::ink3));
