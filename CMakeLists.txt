@@ -22,6 +22,7 @@ qt_add_executable(reSTEM ${APP_SOURCES})
 # ── Embed SVG assets into the binary ─────────────────────────
 qt_add_resources(reSTEM "app_resources"
     PREFIX "/icons"
+    BASE "assets/icons"
     FILES
         assets/icons/xp.svg
         assets/icons/streak.svg

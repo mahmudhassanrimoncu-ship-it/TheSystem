@@ -765,7 +765,10 @@ public:
 
     // Mark any arbitrary day complete. Records the current calendar date as a study date.
     // Returns XP awarded (0 if day was already done).
-    int markDay(const QString& planId, int day) {
+    // countStreak: if false, today is NOT added to studyDates.
+    // Use countStreak=false when the user explicitly opts out of
+    // crediting today's streak for a backdated or pre-logged day.
+    int markDay(const QString& planId, int day, bool countStreak = true) {
         auto* plan = planById(planId);
         if (!plan) return 0;
         auto& prog = progressFor(planId);
@@ -779,10 +782,11 @@ public:
         prog.completedDays.insert(day);
         prog.totalXp += xp;
 
-        // Record today's calendar date as a study day (once per real day)
-        QString todayStr = QDate::currentDate().toString("yyyy-MM-dd");
-        prog.studyDates.insert(todayStr);
-        prog.lastCompletedDate = todayStr;
+        if (countStreak) {
+            QString todayStr = QDate::currentDate().toString("yyyy-MM-dd");
+            prog.studyDates.insert(todayStr);
+            prog.lastCompletedDate = todayStr;
+        }
 
         recalcStreak(prog);
         save();
@@ -1556,11 +1560,29 @@ private:
                 dlg->addButton("Keep Stall", QMessageBox::RejectRole);
                 dlg->exec();
                 if (dlg->clickedButton() == markBtn) {
+                    // For stalled days, also ask about streak
+                    bool todayStall = (day == todayNum);
+                    bool countStreakStall = todayStall; // default: count if today
+                    if (!todayStall) {
+                        auto* sAsk = new QMessageBox(this);
+                        sAsk->setWindowTitle("Count toward streak?");
+                        sAsk->setText(QString(
+                            "Day %1 is a past day.\n\n"
+                            "Do you want today to count toward your streak?")
+                            .arg(day));
+                        auto* sYes = sAsk->addButton("Yes, Count It",  QMessageBox::AcceptRole);
+                        sAsk->addButton("No, Just Log It", QMessageBox::RejectRole);
+                        sAsk->exec();
+                        countStreakStall = (sAsk->clickedButton() == sYes);
+                    }
                     dm.unstallDay(m_planId, day);
-                    int xp = dm.markDay(m_planId, day);
+                    int xp = dm.markDay(m_planId, day, countStreakStall);
                     hmap->setData(*plan, prog);
                     QMessageBox::information(this, "Marked Complete",
-                        QString("Day %1 marked complete.\n+%2 XP awarded.").arg(day).arg(xp));
+                        QString("Day %1 marked complete.\n+%2 XP awarded.%3")
+                        .arg(day).arg(xp)
+                        .arg(todayStall ? "" : (countStreakStall
+                            ? "\nStreak counted." : "\nStreak unchanged.")));
                     emit dataChanged();
                 } else if (dlg->clickedButton() == removeBtn) {
                     dm.unstallDay(m_planId, day);
@@ -1569,7 +1591,7 @@ private:
                 }
 
             } else if (day > todayNum) {
-                // ── Future → Study-ahead ─────────────────────────────
+                // ── Future → Study-ahead with streak choice ──────────
                 int daysAhead = day - todayNum;
                 auto* dlg = new QMessageBox(this);
                 dlg->setWindowTitle(QString("Day %1 — Study Ahead").arg(day));
@@ -1580,33 +1602,72 @@ private:
                     .arg(day).arg(topicLine)
                     .arg(daysAhead).arg(daysAhead == 1 ? "" : "s"));
                 dlg->setIcon(QMessageBox::Question);
-                auto* markBtn = dlg->addButton("✓  Yes, Mark Complete", QMessageBox::AcceptRole);
+                auto* markYesStreak = dlg->addButton("✓  Yes, Count Streak",    QMessageBox::AcceptRole);
+                auto* markNoStreak  = dlg->addButton("✓  Yes, Don't Count Streak", QMessageBox::ActionRole);
                 dlg->addButton("Cancel", QMessageBox::RejectRole);
+                dlg->setDetailedText(
+                    "Count Streak: today is recorded as a study day.\n"
+                    "Don't Count Streak: day is marked complete (XP awarded)\n"
+                    "  but your streak is not affected.");
                 dlg->exec();
-                if (dlg->clickedButton() == markBtn) {
-                    int xp = dm.markDay(m_planId, day);
+                bool doMark       = (dlg->clickedButton() == markYesStreak ||
+                                     dlg->clickedButton() == markNoStreak);
+                bool countStreak_ = (dlg->clickedButton() == markYesStreak);
+                if (doMark) {
+                    int xp = dm.markDay(m_planId, day, countStreak_);
                     hmap->setData(*plan, prog);
                     QMessageBox::information(this, "Marked Complete",
-                        QString("Day %1 marked complete.\n+%2 XP awarded.").arg(day).arg(xp));
+                        QString("Day %1 marked complete.\n+%2 XP awarded.\n%3")
+                        .arg(day).arg(xp)
+                        .arg(countStreak_ ? "Streak counted." : "Streak unchanged."));
                     emit dataChanged();
                 }
 
             } else {
                 // ── Past / today, pending → Mark Complete or Stall ──
+                bool isToday_ = (day == todayNum);
                 auto* dlg = new QMessageBox(this);
                 dlg->setWindowTitle(QString("Day %1").arg(day));
                 dlg->setText(QString("Day %1%2\n\nChoose an action:")
                     .arg(day).arg(topicLine));
                 dlg->setIcon(QMessageBox::Question);
-                auto* markBtn  = dlg->addButton("✓  Mark Complete",  QMessageBox::AcceptRole);
+
+                QPushButton* markYesStreak = nullptr;
+                QPushButton* markNoStreak  = nullptr;
+                QPushButton* markBtn       = nullptr;
+
+                if (isToday_) {
+                    // Today — single "Mark Complete" button, always counts streak
+                    markBtn = dlg->addButton("✓  Mark Complete", QMessageBox::AcceptRole);
+                } else {
+                    // Past day — offer streak choice
+                    markYesStreak = dlg->addButton("✓  Mark Complete (Count Streak)",
+                                                   QMessageBox::AcceptRole);
+                    markNoStreak  = dlg->addButton("✓  Mark Complete (Keep Streak)",
+                                                   QMessageBox::ActionRole);
+                    dlg->setDetailedText(
+                        "Count Streak: today is recorded as a study day.\n"
+                        "Keep Streak: day is marked complete (XP awarded)\n"
+                        "  but your streak is not affected.");
+                }
                 auto* stallBtn = dlg->addButton("  Stall This Day", QMessageBox::ActionRole);
                 dlg->addButton("Cancel", QMessageBox::RejectRole);
                 dlg->exec();
-                if (dlg->clickedButton() == markBtn) {
-                    int xp = dm.markDay(m_planId, day);
+
+                bool clickedMark = (markBtn && dlg->clickedButton() == markBtn)
+                                || (markYesStreak && dlg->clickedButton() == markYesStreak)
+                                || (markNoStreak  && dlg->clickedButton() == markNoStreak);
+                bool countStreak_ = isToday_
+                                 || (markYesStreak && dlg->clickedButton() == markYesStreak);
+
+                if (clickedMark) {
+                    int xp = dm.markDay(m_planId, day, countStreak_);
                     hmap->setData(*plan, prog);
                     QMessageBox::information(this, "Marked Complete",
-                        QString("Day %1 marked complete.\n+%2 XP awarded.").arg(day).arg(xp));
+                        QString("Day %1 marked complete.\n+%2 XP awarded.%3")
+                        .arg(day).arg(xp)
+                        .arg(isToday_ ? "" : (countStreak_
+                            ? "\nStreak counted." : "\nStreak unchanged.")));
                     emit dataChanged();
                 } else if (dlg->clickedButton() == stallBtn) {
                     dm.stallDay(m_planId, day);
