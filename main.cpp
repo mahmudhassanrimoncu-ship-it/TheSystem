@@ -3383,7 +3383,10 @@ public:
             "<code>%1</code><br><br>"
             "<span style='color:#8D9096;font-size:11px;'>"
             "This path is specific to your user account. Each person who runs this app "
-            "on their own computer sees their own path and their own data. "
+            "on their own computer sees their own path and their own data.<br>"
+            "Developed by - Mahmud Hassan Rimon<br>"
+            "<b>CSE</b> @ University of Chittagong<br>"
+            "contact:mahmudhassanrimoncu@gmail.com"
             "</span>").arg(DataManager::dataPath());
         auto* abtTxt = new QLabel(dataNote);
         abtTxt->setStyleSheet(QString("color: %1; font-size: 12px; border: none;").arg(Cl::ink3));
