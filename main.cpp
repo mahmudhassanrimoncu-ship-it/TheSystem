@@ -67,12 +67,62 @@
 #include <QScreen>
 #include <QRegularExpression>
 #include <QUuid>
-
+#include <QSvgRenderer>  // add this with your other includes
 #include <algorithm>
 #include <cmath>
 #include <functional>
 #include <optional>
 #include <vector>
+
+
+// ── Icon helper ────────────────────────────────────────────────
+// Returns a QLabel showing an SVG icon at the given size and colour.
+// name: filename without extension, e.g. "bolt"
+// size: square pixel size
+// color: tint colour (applies colorize effect) — pass "" for original colours
+// Render an SVG from Qt resources to a QPixmap, optionally tinted.
+QPixmap makeSvgPixmap(const QString& name, int size,
+                      const QColor& color = QColor()) {
+    QSvgRenderer renderer(QString(":/icons/%1.svg").arg(name));
+    QPixmap px(size, size);
+    px.fill(Qt::transparent);
+    QPainter painter(&px);
+    renderer.render(&painter);
+    painter.end();
+    if (color.isValid()) {
+        QPainter tinter(&px);
+        tinter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        tinter.fillRect(px.rect(), color);
+    }
+    return px;
+}
+
+// Returns a QLabel showing an SVG icon — use in layouts.
+QLabel* makeIcon(const QString& name, int size,
+                 const QColor& color = QColor()) {
+    auto* lbl = new QLabel;
+    lbl->setPixmap(makeSvgPixmap(name, size, color));
+    lbl->setFixedSize(size, size);
+    lbl->setAlignment(Qt::AlignCenter);
+    lbl->setStyleSheet("background: transparent; border: none;");
+    return lbl;
+}
+
+// Returns a QIcon from an SVG — use for tab icons and toolbar buttons.
+QIcon svgIcon(const QString& name, int size, const QColor& color = QColor()) {
+    return QIcon(makeSvgPixmap(name, size, color));
+}
+
+// Map from emoji character(s) to SVG name.
+// Used by StatTile to swap emoji for proper SVG icons.
+static const QMap<QString,QString> kEmojiToSvg = {
+    {"⚡", "xp"},   {"✅", "check"},  {"🔥", "streak"},
+    {"🏆", "rank"}, {"⏸",  "pause"},  {"▶",  "play"},
+    {"📜", "list"}, {"📊", "stats"},   {"⚙",  "gears"},
+    {"⚙️","gears"}, {"📦", "archive"}, {"🎯", "rank"},
+    {"📈", "stats"},{"📋", "list"},    {"📅", "streak"},
+    {"⬛", "check"},{"🔒", "pause"},
+};
 
 // ============================================================
 //  COLOUR PALETTE  —  Khan Academy Design System
@@ -1549,7 +1599,7 @@ private:
                     .arg(day).arg(topicLine));
                 dlg->setIcon(QMessageBox::Question);
                 auto* markBtn  = dlg->addButton("✓  Mark Complete",  QMessageBox::AcceptRole);
-                auto* stallBtn = dlg->addButton("⏸  Stall This Day", QMessageBox::ActionRole);
+                auto* stallBtn = dlg->addButton("  Stall This Day", QMessageBox::ActionRole);
                 dlg->addButton("Cancel", QMessageBox::RejectRole);
                 dlg->exec();
                 if (dlg->clickedButton() == markBtn) {
@@ -1642,7 +1692,8 @@ private:
                 auto* cl = new QHBoxLayout(card);
                 cl->setContentsMargins(16, 12, 16, 12);
 
-                auto* icon = new QLabel(done ? "🏆" : "🔒");
+                auto* icon = makeIcon(done ? "rank" : "pause", 22,
+                    QColor(done ? Cl::gold2 : Cl::ink4));
                 icon->setStyleSheet("font-size: 20px; border: none; background: transparent;");
 
                 auto* nameCol = new QVBoxLayout;
@@ -1744,7 +1795,15 @@ private:
             cl->setContentsMargins(12,12,12,12);
             cl->setAlignment(Qt::AlignCenter);
 
-            auto* iconL = new QLabel(e ? d.icon : "🔒");
+            // Unlocked: show emoji badge. Locked: show pause SVG (lock shape)
+            QWidget* iconL = nullptr;
+            if (e) {
+                auto* lbl = new QLabel(d.icon);
+                lbl->setStyleSheet("font-size: 22px; border: none; background: transparent;");
+                iconL = lbl;
+            } else {
+                iconL = makeIcon("pause", 22, QColor(Cl::ink4));
+            }
             iconL->setStyleSheet("font-size: 26px; border: none; background: transparent;");
             iconL->setAlignment(Qt::AlignCenter);
             auto* titleL = new QLabel(d.title);
@@ -1916,7 +1975,8 @@ public:
                 .arg(Cl::cardBg2).arg(Cl::ink4));
         } else if (activeDone) {
             m_markBtn->setEnabled(true);
-            m_markBtn->setText("↩  Undo");
+            m_markBtn->setIcon(svgIcon("check", 14, QColor(Cl::ink3)));
+        m_markBtn->setText("  Undo");
             m_markBtn->setStyleSheet(QString(
                 "QPushButton {"
                 "  background: %1; color: %2;"
@@ -1928,7 +1988,8 @@ public:
                 .arg(Cl::cardBg2).arg(Cl::ink4).arg(Cl::red));
         } else {
             m_markBtn->setEnabled(true);
-            m_markBtn->setText("✓  Done");
+            m_markBtn->setIcon(svgIcon("check", 14, QColor(Cl::white_)));
+        m_markBtn->setText("  Done");
             m_markBtn->setStyleSheet(QString(
                 "QPushButton {"
                 "  background: %1; color: #FFFFFF; border: none;"
@@ -1943,7 +2004,7 @@ public:
         int validCompleted = Plan::validCompletedCount(prog.completedDays, plan->duration);
         QString stallStr = prog.stalledDays.isEmpty()
             ? "" : QString("  ·  ⏸%1 stalled").arg(prog.stalledDays.size());
-        m_statLbl->setText(QString("%1%  ·  %2/%3 days  ·  🔥%4%5  ·  %6 XP")
+        m_statLbl->setText(QString("%1%  ·  %2/%3 days  ·  streak: %4%5  ·  %6 XP")
             .arg(pct)
             .arg(validCompleted)
             .arg(plan->duration)
@@ -2044,7 +2105,7 @@ private:
         panelLayout->addLayout(textCol, 1);
 
         // Right side: Done / Undo button — min width so text never clips
-        m_markBtn = new QPushButton("✓  Done");
+        m_markBtn = new QPushButton(svgIcon("check", 14, QColor(Cl::white_)), "  Done");
         m_markBtn->setProperty("role", "success");
         m_markBtn->setMinimumWidth(104);   // wide enough for "↩  Undo"
         m_markBtn->setFixedHeight(44);
@@ -2304,7 +2365,7 @@ public:
         m_outerVl->setSpacing(0);
 
         // ── Pending section ───────────────────────────────────────
-        m_pendingHdr = makeSectionHeader("⚡  IN PROGRESS", Cl::blue);
+        m_pendingHdr = makeSectionHeader("  IN PROGRESS", Cl::blue);
         m_pendingContainer = new QWidget;
         m_pendingContainer->setStyleSheet("background: transparent; border: none;");
         m_pendingVl = new QVBoxLayout(m_pendingContainer);
@@ -2320,7 +2381,7 @@ public:
         m_pendingVl->addWidget(m_emptyPending);
 
         // ── Completed section ─────────────────────────────────────
-        m_completedHdr = makeSectionHeader("✅  COMPLETED", Cl::green2);
+        m_completedHdr = makeSectionHeader("  COMPLETED", Cl::green2);
         m_completedContainer = new QWidget;
         m_completedContainer->setStyleSheet("background: transparent; border: none;");
         m_completedVl = new QVBoxLayout(m_completedContainer);
@@ -2600,9 +2661,13 @@ private:
     QWidget* buildRight() {
         auto* tabs = new QTabWidget;
         tabs->setStyleSheet("QTabBar::tab { padding: 9px 18px; }");
-        tabs->addTab(buildCurriculumTab(), "📜  Curriculum");
-        tabs->addTab(buildRankTab(),       "⚔️  Rank Thresholds");
-        tabs->addTab(buildImportTab(),     "⬆  Bulk Import");
+        tabs->addTab(buildCurriculumTab(), " Curriculum");
+        tabs->addTab(buildRankTab(),       " Rank XP");
+        tabs->addTab(buildImportTab(),     " Bulk Import");
+        tabs->setTabIcon(0, svgIcon("list",         16, QColor(Cl::blue)));
+        tabs->setTabIcon(1, svgIcon("rank",         16, QColor(Cl::blue)));
+        tabs->setTabIcon(2, svgIcon("achievements", 16, QColor(Cl::blue)));
+        tabs->setIconSize(QSize(16, 16));
         return tabs;
     }
 
@@ -3299,9 +3364,9 @@ public:
         bakTip->setStyleSheet(QString("color: %1; font-size: 12px; border: none;").arg(Cl::ink3));
         bakVl->addWidget(bakTip);
         auto* bakRow = new QHBoxLayout;
-        auto* expBtn = new QPushButton("⬇  Export JSON");
+        auto* expBtn = new QPushButton("Export JSON");
         connect(expBtn, &QPushButton::clicked, this, &ManageTab::exportData);
-        auto* impBtn = new QPushButton("⬆  Import JSON");
+        auto* impBtn = new QPushButton("Import JSON");
         connect(impBtn, &QPushButton::clicked, this, &ManageTab::importData);
         bakRow->addWidget(expBtn); bakRow->addWidget(impBtn); bakRow->addStretch();
         bakVl->addLayout(bakRow);
@@ -3470,7 +3535,9 @@ private:
         auto* arow = new QHBoxLayout;
         if (!isArchived) {
             // Toggle active/inactive — always visible so any plan can be toggled
-            auto* toggleBtn = new QPushButton(isActive ? "✓ Active" : "Set Active");
+            auto* toggleBtn = new QPushButton(
+                isActive ? svgIcon("check", 13, QColor(Cl::green)) : QIcon(),
+                isActive ? "  Active" : "Set Active");
             toggleBtn->setFixedHeight(30);
             if (isActive) {
                 toggleBtn->setStyleSheet(QString(
@@ -3489,7 +3556,7 @@ private:
                 [this, id = plan.id]{ editPlan(id); });
             arow->addWidget(editBtn);
 
-            auto* archBtn = new QPushButton("📦  Archive"); archBtn->setFixedHeight(30);
+            auto* archBtn = new QPushButton(svgIcon("archive", 14), " Archive"); archBtn->setFixedHeight(30);
             connect(archBtn, &QPushButton::clicked, this,
                 [this, id = plan.id]{ archivePlan(id); });
             arow->addWidget(archBtn);
@@ -3968,8 +4035,15 @@ public:
         auto* vl = new QVBoxLayout(this);
         vl->setContentsMargins(16, 14, 16, 14); vl->setSpacing(2);
 
-        auto* iconLbl = new QLabel(icon);
-        iconLbl->setStyleSheet("font-size: 20px; border: none; background: transparent;");
+        // Use SVG icon if we have a mapping, otherwise fall back to emoji text
+        QWidget* iconLbl = nullptr;
+        if (kEmojiToSvg.contains(icon)) {
+            iconLbl = makeIcon(kEmojiToSvg[icon], 22, QColor(accentColor));
+        } else {
+            auto* lbl = new QLabel(icon);
+            lbl->setStyleSheet("font-size: 20px; border: none; background: transparent;");
+            iconLbl = lbl;
+        }
 
         m_valueLbl = new QLabel(value);
         m_valueLbl->setStyleSheet(QString("color: %1; font-size: 26px; font-weight: 700;"
@@ -5193,10 +5267,16 @@ public:
         m_stats     = new StatsTab;
         m_manage    = new ManageTab;
 
-        m_tabs->addTab(m_dashboard, "  ⚡  Dashboard  ");
-        m_tabs->addTab(m_setup,     "  📜  Setup  ");
-        m_tabs->addTab(m_stats,     "  📊  Statistics  ");
-        m_tabs->addTab(m_manage,    "  ⚙  Manage  ");
+        m_tabs->addTab(m_dashboard, " Dashboard ");
+        m_tabs->addTab(m_setup,     " Setup ");
+        m_tabs->addTab(m_stats,     " Statistics ");
+        m_tabs->addTab(m_manage,    " Manage ");
+        // SVG tab icons — sized 18px, tinted to navy for normal, blue for active
+        m_tabs->setTabIcon(0, svgIcon("xp",     18, QColor(Cl::blue)));
+        m_tabs->setTabIcon(1, svgIcon("list",   18, QColor(Cl::blue)));
+        m_tabs->setTabIcon(2, svgIcon("stats",  18, QColor(Cl::blue)));
+        m_tabs->setTabIcon(3, svgIcon("gears",  18, QColor(Cl::blue)));
+        m_tabs->setIconSize(QSize(18, 18));
 
         connect(m_dashboard, &DashboardTab::newQuestLineRequested, this, [this]{
             m_tabs->setCurrentWidget(m_setup);

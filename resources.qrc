@@ -1,0 +1,17 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource prefix="/icons">
+        <file>assets/icons/xp.svg</file>
+        <file>assets/icons/streak.svg</file>
+        <file>assets/icons/rank.svg</file>
+        <file>assets/icons/check.svg</file>
+        <file>assets/icons/firecheck.svg</file>
+        <file>assets/icons/achievements.svg</file>
+        <file>assets/icons/stats.svg</file>
+        <file>assets/icons/gears.svg</file>
+        <file>assets/icons/list.svg</file>
+        <file>assets/icons/pause.svg</file>
+        <file>assets/icons/play.svg</file>
+        <file>assets/icons/archive.svg</file>
+    </qresource>
+</RCC>

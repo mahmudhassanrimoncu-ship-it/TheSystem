@@ -7,7 +7,8 @@ set(CMAKE_AUTOMOC ON)
 
 set(QT_NO_CACHEGEN ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Core)
+# Qt6 — Svg added for SVG icon rendering
+find_package(Qt6 REQUIRED COMPONENTS Widgets Core Svg)
 
 # ── Windows: embed .ico into the .exe via resource file ──────
 if(WIN32)
@@ -18,20 +19,37 @@ endif()
 
 qt_add_executable(reSTEM ${APP_SOURCES})
 
-target_link_libraries(reSTEM PRIVATE Qt6::Widgets Qt6::Core)
+# ── Embed SVG assets into the binary ─────────────────────────
+qt_add_resources(reSTEM "app_resources"
+    PREFIX "/icons"
+    FILES
+        assets/icons/xp.svg
+        assets/icons/streak.svg
+        assets/icons/rank.svg
+        assets/icons/check.svg
+        assets/icons/firecheck.svg
+        assets/icons/achievements.svg
+        assets/icons/stats.svg
+        assets/icons/gears.svg
+        assets/icons/list.svg
+        assets/icons/pause.svg
+        assets/icons/play.svg
+        assets/icons/archive.svg
+)
+
+# target_link_libraries MUST come after qt_add_executable
+target_link_libraries(reSTEM PRIVATE Qt6::Widgets Qt6::Core Qt6::Svg)
 
 # ── macOS: bundle .icns inside the .app ──────────────────────
 if(APPLE)
-    set(MACOSX_ICON "${CMAKE_SOURCE_DIR}/icons/reSTEM.icns")
     set_target_properties(reSTEM PROPERTIES
-        MACOSX_BUNDLE                   TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER    "com.restem.app"
-        MACOSX_BUNDLE_BUNDLE_NAME       "reSTEM"
-        MACOSX_BUNDLE_BUNDLE_VERSION    ${PROJECT_VERSION}
+        MACOSX_BUNDLE                      TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER       "com.restem.app"
+        MACOSX_BUNDLE_BUNDLE_NAME          "reSTEM"
+        MACOSX_BUNDLE_BUNDLE_VERSION       ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-        MACOSX_BUNDLE_ICON_FILE         reSTEM
+        MACOSX_BUNDLE_ICON_FILE            reSTEM
     )
-    # Tell CMake to copy the .icns into the .app/Contents/Resources/
     set_source_files_properties(icons/reSTEM.icns
         PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(reSTEM PRIVATE icons/reSTEM.icns)
@@ -40,8 +58,6 @@ endif()
 # ── Linux: install icons + .desktop file ─────────────────────
 if(UNIX AND NOT APPLE)
     install(TARGETS reSTEM DESTINATION bin)
-
-    # XDG icon sizes
     foreach(SIZE 16 32 48 64 128 256 512)
         install(
             FILES "icons/restem_${SIZE}.png"
@@ -49,10 +65,5 @@ if(UNIX AND NOT APPLE)
             RENAME "restem.png"
         )
     endforeach()
-
-    # .desktop file — this is what puts the app in the app menu
-    install(
-        FILES "restem.desktop"
-        DESTINATION "share/applications"
-    )
+    install(FILES "restem.desktop" DESTINATION "share/applications")
 endif()
