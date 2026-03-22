@@ -3445,6 +3445,8 @@ public:
             "<span style='color:#8D9096;font-size:11px;'>"
             "This path is specific to your user account. Each person who runs this app "
             "on their own computer sees their own path and their own data.<br>"
+            "<br>"
+            "<br>"
             "Developed by - Mahmud Hassan Rimon<br>"
             "<b>CSE</b> @ University of Chittagong<br>"
             "contact:mahmudhassanrimoncu@gmail.com"
