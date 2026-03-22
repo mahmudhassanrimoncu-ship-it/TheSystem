@@ -1796,11 +1796,11 @@ private:
             cl->setAlignment(Qt::AlignCenter);
 
             // Unlocked: show emoji badge. Locked: show pause SVG (lock shape)
-            QWidget* iconL = nullptr;
+            // Use QLabel* throughout so setAlignment() is always available.
+            QLabel* iconL = nullptr;
             if (e) {
-                auto* lbl = new QLabel(d.icon);
-                lbl->setStyleSheet("font-size: 22px; border: none; background: transparent;");
-                iconL = lbl;
+                iconL = new QLabel(d.icon);
+                iconL->setStyleSheet("font-size: 22px; border: none; background: transparent;");
             } else {
                 iconL = makeIcon("pause", 22, QColor(Cl::ink4));
             }
