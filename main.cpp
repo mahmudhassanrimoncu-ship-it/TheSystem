@@ -310,6 +310,7 @@ QTableWidget {
     alternate-background-color: %11;
 }
 QTableWidget::item { padding: 5px 8px; border: none; }
+QTableWidget QLineEdit { padding: 2px 10px; background: #FFFFFF; border: 1.5px solid #1865F2; border-radius: 3px; color: #21242C; font-size: 12px; }
 QTableWidget::item:selected { background: %18; color: %2; }
 QHeaderView {
     background: %11;
@@ -392,7 +393,14 @@ QToolTip {
 /* ── Splitter / message ── */
 QSplitter::handle:horizontal { width: 1px; background: %3; }
 QSplitter::handle:vertical   { height: 1px; background: %3; }
-QMessageBox { background: #FFFFFF; }
+QMessageBox { background: #FFFFFF; color: #21242C; }
+QMessageBox QLabel { color: #21242C; background: #FFFFFF; font-size: 13px; }
+QMessageBox QPushButton { min-width: 80px; }
+QDialog { background: #F7F8FA; color: #21242C; }
+QDialog QLabel { color: #21242C; }
+QDialog QLineEdit { color: #21242C; background: #FFFFFF; }
+QInputDialog { background: #F7F8FA; color: #21242C; }
+QInputDialog QLabel { color: #21242C; }
 QMessageBox QPushButton { min-width: 88px; }
     )")
     // %1  page bg          %2  ink (text)       %3  border
@@ -680,10 +688,29 @@ public:
 
         prog.completedDays.remove(day);
         prog.totalXp = std::max(0, prog.totalXp - xp);
-        // Note: we intentionally keep studyDates intact when unmarking —
-        // the user DID study that calendar day, we just undo the specific day's credit.
+
+        // Rebuild studyDates from remaining completedDays.
+        // We cannot keep studyDates as-is: if the user undoes all completions
+        // on a given calendar date, that date must leave studyDates so the
+        // streak correctly resets to 0. Rebuilding is the only safe approach.
+        rebuildStudyDates(*plan, prog);
+
         recalcStreak(prog);
         save();
+    }
+
+    // Rebuild studyDates by mapping each remaining completedDay to its
+    // calendar date via the plan's startDate. Called after unmarkDay so
+    // studyDates always exactly reflects current completedDays.
+    static void rebuildStudyDates(const Plan& plan, Progress& prog) {
+        QDate start = QDate::fromString(plan.startDate, "yyyy-MM-dd");
+        if (!start.isValid()) { prog.studyDates.clear(); return; }
+        QSet<QString> rebuilt;
+        for (int d : prog.completedDays) {
+            QDate date = start.addDays(d - 1);
+            rebuilt.insert(date.toString("yyyy-MM-dd"));
+        }
+        prog.studyDates = rebuilt;
     }
 
     // Mark any arbitrary day complete. Records the current calendar date as a study date.
@@ -763,7 +790,9 @@ private:
             }
         }
         best = std::max(best, cur); // handle single-element
-        prog.streakBest = std::max(prog.streakBest, best);
+        // Exact recalc — streakBest reflects current data, not historical max.
+        // This means undoing all days correctly resets best streak to 0.
+        prog.streakBest = best;
 
         // Current streak = consecutive run ending at the most recent study date
         cur = 1;
